@@ -161,21 +161,22 @@ export function PopulationCartogram({ data }: Props) {
             setHoveredCountry(null);
           });
 
-      // Country name (for larger countries)
-      if (radius > 25) {
-        countryGroup.append('text')
-          .attr('x', 0)
-          .attr('y', radius > 40 ? -radius * 0.7 : 0)
-          .attr('text-anchor', 'middle')
-          .attr('fill', '#fff')
-          .attr('font-size', Math.max(Math.min(radius / 4, 16), 10))
-          .attr('font-weight', 'bold')
-          .attr('pointer-events', 'none')
-          .style('text-shadow', '0 0 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)')
-          .text(countryData.countryName.length > 15 && radius < 50
-            ? countryData.countryName.substring(0, 12) + '...'
-            : countryData.countryName);
-      }
+      // Country name - create for all countries but visibility controlled by zoom
+      countryGroup.append('text')
+        .attr('class', 'country-label')
+        .attr('data-radius', radius)
+        .attr('x', 0)
+        .attr('y', radius > 40 ? -radius * 0.7 : 0)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#fff')
+        .attr('font-size', Math.max(Math.min(radius / 4, 16), 10))
+        .attr('font-weight', 'bold')
+        .attr('pointer-events', 'none')
+        .style('text-shadow', '0 0 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)')
+        .style('opacity', radius > 25 ? 1 : 0) // Initially hide small country names
+        .text(countryData.countryName.length > 15 && radius < 50
+          ? countryData.countryName.substring(0, 12) + '...'
+          : countryData.countryName);
       });
     });
 
@@ -200,6 +201,20 @@ export function PopulationCartogram({ data }: Props) {
         }
 
         g.attr('transform', transform);
+
+        // Update label visibility based on zoom level
+        // As you zoom in, show labels for smaller countries
+        const zoomLevel = transform.k;
+        g.selectAll('.country-label')
+          .transition()
+          .duration(200)
+          .style('opacity', function() {
+            const radius = parseFloat(d3.select(this).attr('data-radius'));
+            // Calculate threshold - at zoom level 1, show countries with radius > 25
+            // At zoom level 2, show countries with radius > 12.5, etc.
+            const threshold = 25 / zoomLevel;
+            return radius > threshold ? 1 : 0;
+          });
       });
 
     svg.call(zoom);
